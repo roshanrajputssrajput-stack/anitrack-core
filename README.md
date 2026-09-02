@@ -3,6 +3,17 @@
 A Chrome extension that tracks anime watching and manga reading history —
 auto-detected from whitelisted streaming/reader sites, or added manually.
 
+## AI / developer handoff
+
+**Start here when working on AniTrack:**
+
+- [`AI_CONTEXT.md`](AI_CONTEXT.md) — comprehensive project context, confirmed fixes, known bugs, detection/attachment rules, Resume behavior, QA matrix, UI direction, data-safety rules, and AI workflow.
+- [`AGENTS.md`](AGENTS.md) — concise rules for AI coding agents.
+- [`PROGRESS.md`](PROGRESS.md) — chronological implementation and QA log.
+- [`WORKFLOW.md`](WORKFLOW.md) — development/session rules.
+
+The repository source files are the implementation source of truth. AI agents should inspect the actual code before assuming a feature exists or changing behavior.
+
 ## What it does today (v12.0.0)
 
 ### Auto-detection
@@ -25,8 +36,8 @@ auto-detected from whitelisted streaming/reader sites, or added manually.
 - Real `<video>` playback is tracked event-by-event (not polled) —
   accumulates actual watched seconds, ignores seeking/buffering/paused
   time, and reports on a throttle (every 10s or 5% progress).
-- A site-level fallback (tab focus + idle detection) covers sites where
-  the video element isn't reachable (DRM players, etc).
+- A site-level fallback (tab focus + idle detection) covers sites where the
+  video element isn't reachable (DRM players, etc).
 - Episode completion is detected by percentage (95%+ watched, or under 2
   minutes remaining), not a fixed time guess, and fires once per episode.
 - **Live position on the library card**: while an episode is actively being
@@ -84,6 +95,8 @@ auto-detected from whitelisted streaming/reader sites, or added manually.
   time-tracking sessions, rewatch detection, notifications, alarms
 - `popup.js` / `popup.html` / `popup.css` — the extension UI
 - `icons/` — toolbar icons + mascot sprite set
+- `AI_CONTEXT.md` — detailed AI/developer handoff
+- `AGENTS.md` — AI coding-agent rules
 - `WORKFLOW.md` — how this project is developed (one feature at a time,
   self-documenting via `PROGRESS.md`)
 - `PROGRESS.md` — session-by-session log of what shipped and what's next
