@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AniTrack</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+<header class="header">
+  <div class="header-brand">
+    <span class="header-icon-wrap">
+      <img class="mascot-chibi" id="mascot-chibi" src="icons/mascot-idle1.png" alt="mascot" style="cursor:pointer" />
+      <span class="header-icon-logo">⛩</span>
+    </span>
+    <span class="header-title">AniTrack</span>
+    <span class="header-version">v12</span>
+    <span class="mascot-bubble" id="mascot-bubble"></span>
+  </div>
+  <div class="header-actions">
+    <span id="header-timer" style="font-size:11px;color:var(--text-secondary);padding:4px 8px;border:1px solid var(--border);border-radius:6px" title="Total time watching, across all whitelisted sites">⏱ …</span>
+    <button class="btn-icon" id="btn-theme">☀️</button>
+    <button class="btn-icon mal-btn" id="btn-mal-connect">🔗 MAL</button>
+    <button class="btn-icon" id="btn-export">⬇ Backup</button>
+    <button class="btn-icon" id="btn-import">⬆ Restore</button>
+    <input type="file" id="import-file" accept=".json" style="display:none" />
+  </div>
+</header>
+
+<nav class="tab-bar">
+  <button class="tab active" data-tab="library">📚 Library</button>
+  <button class="tab tab-manga" data-tab="manga">📖 Manga</button>
+  <button class="tab" data-tab="newseasons">🆕 New</button>
+  <button class="tab" data-tab="history">📜 History</button>
+  <button class="tab" data-tab="stats">📊 Stats</button>
+  <button class="tab" data-tab="add">＋ Add</button>
+  <button class="tab" data-tab="settings">⚙ Settings</button>
+</nav>
+
+<div class="controls-bar">
+  <input type="text" id="search-input" class="search-input" placeholder="Search anime…" />
+  <select id="status-filter" class="status-filter">
+    <option value="all">All</option>
+    <option value="watching">Watching</option>
+    <option value="completed">Completed</option>
+    <option value="dropped">Dropped</option>
+    <option value="hold">On Hold</option>
+    <option value="plan">Plan to Watch</option>
+  </select>
+  <select id="sort-select" class="status-filter">
+    <option value="recent">Recent</option>
+    <option value="title">A-Z</option>
+    <option value="rating">Rating</option>
+    <option value="progress">Progress</option>
+    <option value="priority">Priority</option>
+    <option value="pinned">Pinned</option>
+  </select>
+</div>
+
+<!-- LIBRARY (with List / Organized view toggle) -->
+<div id="tab-library" class="tab-content active">
+  <div class="view-toggle" style="display:flex;gap:4px;padding:8px 10px 0">
+    <button id="view-toggle-list" class="view-toggle-btn active">📋 List</button>
+    <button id="view-toggle-organized" class="view-toggle-btn">🗂 Organized</button>
+  </div>
+  <div id="library-list" class="card-list"></div>
+  <div id="organized-list" style="padding:10px;display:none"></div>
+</div>
+
+<!-- MANGA (separate from anime — chapter-based, no MAL) -->
+<div id="tab-manga" class="tab-content">
+  <div id="manga-list" class="card-list"></div>
+</div>
+
+<!-- NEW SEASONS -->
+<div id="tab-newseasons" class="tab-content">
+  <button id="btn-check-seasons-now" class="btn-secondary" style="margin:10px">🔄 Check Now</button>
+  <div id="newseasons-list" class="card-list"></div>
+</div>
+
+<!-- HISTORY -->
+<div id="tab-history" class="tab-content">
+  <div id="history-list" class="history-list"></div>
+</div>
+
+<!-- STATS -->
+<div id="tab-stats" class="tab-content">
+  <div class="stats-grid" id="stats-grid"></div>
+</div>
+
+<!-- ADD -->
+<div id="tab-add" class="tab-content">
+  <div class="add-section">
+    <h3 class="section-title">🔍 Search & Add to Plan to Watch</h3>
+    <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px">Saw a trailer or heard about something? Search here, no need to visit any site.</div>
+    <div style="display:flex;gap:6px">
+      <input type="text" id="quickadd-search-input" class="input-field" placeholder="e.g. Shangri-La Frontier" style="flex:1" />
+      <button id="quickadd-search-btn" class="btn-secondary" style="white-space:nowrap">Search</button>
+    </div>
+    <div id="quickadd-results" style="margin-top:10px;display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto"></div>
+  </div>
+  <div class="divider"><span>or track something you're currently watching</span></div>
+  <div class="add-section">
+    <h3 class="section-title">From Current Tab</h3>
+    <button id="btn-save-tab" class="btn-primary btn-full"><span>⚡ Save This Episode</span></button>
+    <div id="tab-preview" class="preview-box hidden"></div>
+  </div>
+  <div class="divider"><span>or paste a URL</span></div>
+  <div class="add-section">
+    <h3 class="section-title">Manual Entry</h3>
+    <input type="text" id="manual-url" class="input-field" placeholder="Paste episode URL here…" />
+    <button id="btn-parse-url" class="btn-secondary btn-full">Parse URL</button>
+    <div id="manual-preview" class="preview-box hidden">
+      <div class="preview-row"><label>Anime Title</label><input type="text" id="edit-title" class="input-field" /></div>
+      <div class="form-row-2">
+        <div class="preview-row"><label>Episode</label><input type="text" id="edit-episode" class="input-field" placeholder="5" /></div>
+        <div class="preview-row"><label>Total Episodes</label><input type="text" id="edit-total" class="input-field" placeholder="24" /></div>
+      </div>
+      <div class="form-row-2">
+        <div class="preview-row">
+          <label>Status</label>
+          <select id="edit-status" class="input-field">
+            <option value="watching">Watching</option>
+            <option value="completed">Completed</option>
+            <option value="dropped">Dropped</option>
+            <option value="hold">On Hold</option>
+            <option value="plan">Plan to Watch</option>
+          </select>
+        </div>
+        <div class="preview-row">
+          <label>Priority</label>
+          <select id="edit-priority" class="input-field">
+            <option value="normal">Normal</option>
+            <option value="high">🔴 High</option>
+            <option value="low">🔵 Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="preview-row">
+          <label>Type</label>
+          <select id="edit-type" class="input-field">
+            <option value="sub">Sub</option>
+            <option value="dub">Dub</option>
+            <option value="both">Both</option>
+          </select>
+        </div>
+        <div class="preview-row"><label>Season</label><input type="text" id="edit-season" class="input-field" placeholder="2" /></div>
+      </div>
+      <div class="preview-row"><label>Tags</label><input type="text" id="edit-tags" class="input-field" placeholder="action, romance" /></div>
+      <div class="preview-row"><label>Episode Note</label><input type="text" id="edit-ep-notes" class="input-field" placeholder="Note about this episode…" /></div>
+      <div class="preview-row"><label>Anime Notes</label><input type="text" id="edit-notes" class="input-field" placeholder="General notes…" /></div>
+      <button id="btn-save-manual" class="btn-primary btn-full">Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="tab-settings" class="tab-content">
+  <div class="settings-section">
+    <h3 class="section-title">Time Spent (per site)</h3>
+    <div id="site-time-list" style="display:flex;flex-direction:column;gap:6px"></div>
+  </div>
+
+  <div class="settings-section">
+    <h3 class="section-title">Auto-Detect Websites</h3>
+    <div class="setting-row" style="display:block">
+      <div class="setting-sub" style="margin-bottom:8px">Add any site's domain — AniTrack reads the page title generically (no per-site setup) and saves the episode automatically.</div>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="whitelist-input" class="input-field" placeholder="e.g. crunchyroll.com" style="flex:1" />
+        <button class="btn-secondary" id="btn-whitelist-add" style="white-space:nowrap">+ Add</button>
+      </div>
+      <div id="whitelist-list" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <h3 class="section-title">MyAnimeList Sync</h3>
+    <div class="mal-card">
+      <div id="mal-disconnected" class="mal-state">
+        <div class="mal-icon">🔗</div>
+        <div class="mal-info">
+          <div class="mal-title">Connect MyAnimeList</div>
+          <div class="mal-sub">Auto sync your watch history</div>
+        </div>
+        <button class="btn-primary" id="btn-mal-login" style="white-space:nowrap;padding:6px 14px">Connect</button>
+      </div>
+      <div id="mal-connected" class="mal-state hidden">
+        <div class="mal-icon">✅</div>
+        <div class="mal-info">
+          <div class="mal-title" id="mal-username">Connected</div>
+          <div class="mal-sub">Syncing automatically on every save</div>
+        </div>
+        <button class="btn-secondary" id="btn-mal-logout" style="white-space:nowrap;padding:6px 10px;font-size:11px">Disconnect</button>
+      </div>
+      <div id="mal-loading" class="mal-state hidden">
+        <div class="mal-icon">⏳</div>
+        <div class="mal-info">
+          <div class="mal-title">Connecting...</div>
+          <div class="mal-sub">Complete login in the browser tab</div>
+        </div>
+      </div>
+    </div>
+    <div id="mal-actions" class="hidden" style="display:none;gap:8px;margin-top:8px">
+      <button class="btn-secondary btn-full" id="btn-mal-import">⬇ Import from MAL</button>
+      <button class="btn-secondary btn-full" id="btn-mal-push">⬆ Push all to MAL</button>
+      <button class="btn-secondary btn-full" id="btn-mal-resync">🔄 Sync Old Anime (find missing links)</button>
+      <button class="btn-secondary btn-full" id="btn-merge-dupes">🧹 Clean Up Duplicates</button>
+    </div>
+    <div id="resync-progress" class="hidden" style="font-size:11px;color:var(--text-secondary);margin-top:8px"></div>
+  </div>
+
+  <div class="settings-section">
+    <h3 class="section-title">Tracking</h3>
+    <div class="setting-row">
+      <div class="setting-label">
+        <div class="setting-name">Default Intro Length (mins)</div>
+        <div class="setting-sub">Subtracted from watch time estimate</div>
+      </div>
+      <input type="number" id="intro-length" class="input-field" style="width:65px;text-align:center" placeholder="1.5" min="0" max="10" step="0.5" />
+    </div>
+    <div class="setting-row" style="margin-top:10px">
+      <div class="setting-label">
+        <div class="setting-name">Auto Backup</div>
+        <div class="setting-sub">Backup on every episode save</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="auto-backup-toggle" checked />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <h3 class="section-title">Data Management</h3>
+    <div class="setting-row">
+      <div class="setting-label">
+        <div class="setting-name">Storage</div>
+        <div class="setting-sub" id="storage-info">Calculating...</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn-secondary btn-full" id="settings-export">⬇ Export</button>
+      <button class="btn-secondary btn-full" id="settings-import-btn">⬆ Restore</button>
+    </div>
+    <button class="btn-danger btn-full" id="btn-clear-data" style="margin-top:8px">🗑 Clear All Data</button>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div id="edit-modal" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header"><h3>Edit Anime</h3><button id="modal-close" class="btn-close">✕</button></div>
+    <div class="modal-body">
+      <div class="preview-row"><label>Title</label><input type="text" id="modal-title" class="input-field" /></div>
+      <div class="form-row-2">
+        <div class="preview-row"><label>Episode</label><input type="text" id="modal-episode" class="input-field" /></div>
+        <div class="preview-row"><label>Total Episodes</label><input type="text" id="modal-total" class="input-field" /></div>
+      </div>
+      <div class="form-row-2">
+        <div class="preview-row"><label>Status</label>
+          <select id="modal-status" class="input-field">
+            <option value="watching">Watching</option><option value="completed">Completed</option>
+            <option value="dropped">Dropped</option><option value="hold">On Hold</option><option value="plan">Plan to Watch</option>
+          </select>
+        </div>
+        <div class="preview-row"><label>Priority</label>
+          <select id="modal-priority" class="input-field">
+            <option value="normal">Normal</option><option value="high">🔴 High</option><option value="low">🔵 Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="preview-row"><label>Type</label>
+          <select id="modal-type" class="input-field">
+            <option value="sub">Sub</option><option value="dub">Dub</option><option value="both">Both</option>
+          </select>
+        </div>
+        <div class="preview-row"><label>Season</label><input type="text" id="modal-season" class="input-field" /></div>
+      </div>
+      <div class="preview-row"><label>Tags</label><input type="text" id="modal-tags" class="input-field" /></div>
+      <div class="preview-row"><label>Notes</label><input type="text" id="modal-notes" class="input-field" /></div>
+      <input type="hidden" id="modal-entry-id" />
+      <button id="modal-save" class="btn-primary btn-full">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div id="epnotes-modal" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header"><h3>📝 Episode Notes</h3><button id="epnotes-close" class="btn-close">✕</button></div>
+    <div class="modal-body" id="epnotes-body"></div>
+  </div>
+</div>
+
+<div id="complete-modal" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header"><h3>🎉 Completed!</h3><button id="complete-close" class="btn-close">✕</button></div>
+    <div class="modal-body" id="complete-body"></div>
+  </div>
+</div>
+
+<div id="pick-modal" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header"><h3>🎲 What to Watch?</h3><button id="pick-close" class="btn-close">✕</button></div>
+    <div class="modal-body" id="pick-body"></div>
+  </div>
+</div>
+
+<div id="link-modal" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header"><h3>🔗 Link to MyAnimeList</h3><button id="link-close" class="btn-close">✕</button></div>
+    <div class="modal-body">
+      <div class="preview-row">
+        <label>Search MAL</label>
+        <input type="text" id="link-search-input" class="input-field" placeholder="Anime title…" />
+      </div>
+      <button id="link-search-btn" class="btn-secondary btn-full">Search</button>
+      <div id="link-results" style="margin-top:10px;display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto"></div>
+      <input type="hidden" id="link-entry-id" />
+      <input type="hidden" id="link-entry-title" />
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<script src="popup.js"></script>
+</body>
+</html>
