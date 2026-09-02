@@ -1,31 +1,38 @@
 {
   "manifest_version": 3,
-  "name": "AniTrack Core",
+  "name": "AniTrack",
   "version": "12.0.0",
-  "description": "Fault-tolerant, high-performance Manifest V3 anime progress tracker.",
-  "permissions": [
-    "storage",
-    "alarms",
-    "activeTab"
-  ],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnO8XDvbKKcgzdKN00JlF6cmScCkHSnHO4zfRRwv3ovBJk7Nnjg7omlxYXaqgnDnWLq9CheoRvjRGRxT3OP/6Wu0B3xg/8YqNkxhsbse1/UtaoRDvbpnvJtw9Y1RvbGxQ/V8mXLnrqD6Au7V040L9obXbtKKj55VuMwFIhXSBJcTytv1KAK1SfVPu3HUprUGS+9KYQXlDE9jWs8jVLmf/IWxok658CDRV3ZBTkP0nCOc0J+VOczfVCJnhP8ownrKJRpnuGvzlyWJ1WNg8KTD2GbpuFFGWGiH7dOI8dTK6VCthxjAg1J70nvhpDEcN8Ci/Cl3tND5633XSgUEJIDxPlwIDAQAB",
+  "description": "Track your anime watching history. Auto-detects title and episode from any streaming site. Syncs with MyAnimeList.",
+  "permissions": ["activeTab", "storage", "tabs", "scripting", "downloads", "notifications", "identity", "alarms", "webNavigation", "idle"],
   "host_permissions": [
     "https://api.myanimelist.net/*",
-    "https://graphql.anilist.co/*",
-    "https://api.ani.zip/*"
+    "https://myanimelist.net/*",
+    "https://api.jikan.moe/*"
   ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_badge_text": ""
+  },
   "background": {
-    "service_worker": "src/background/service-worker.js",
-    "type": "module"
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["src/content/observer.js"],
-      "all_frames": true,
-      "run_at": "document_idle"
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ],
-  "action": {
-    "default_popup": "src/popup/popup.html"
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   }
 }
