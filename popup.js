@@ -1,4 +1,4 @@
-// AniTrack v12 — Full featured with MAL sync, watch sessions, quick rating,
+// AniTrack v12.1 — Full featured with MAL sync, watch sessions, quick rating,
 // rewatch history, and resume-to-timestamp.
 
 const STORAGE_KEY = 'anitrack_v3_entries';
@@ -1404,14 +1404,33 @@ function recordEpisodeWatch(entry, epKey) {
 
 async function saveOrUpdateEntry({title,episode,url,status,notes,epNotes,tags,totalEpisodes,priority,type,season}) {
   const entries=await getEntries();
-  const key=title.toLowerCase().trim();
-  const existingIdx=entries.findIndex(e=>e.title.toLowerCase().trim()===key);
   const tagList=parseTags(tags);
   const ts=Date.now();
   const settings=await getSettings();
   const introMins=parseFloat(settings.introLength)||0;
+  const seasonKey = season || '1';
 
+  // Resolve the Jikan/AniList match FIRST — this lets us identify the
+  // existing entry by malId (stable identity) instead of by title text
+  // alone. Title-only lookup was the last remaining spot where a title
+  // collision (two different anime landing on the same normalized title
+  // string — e.g. one detected with a leftover site tag, one without)
+  // could make a manual "Save This Episode" silently update the WRONG
+  // entry. Everywhere else in the auto-detect path already uses malId +
+  // season identity (see background.js autoDetectFromTab); this closes
+  // the same gap here. Season included for the same reason: a malId
+  // shared across seasons (some MAL entries don't split by season) must
+  // not let a Season 2 save overwrite a Season 1 entry.
   const jikan=await searchJikan(title);
+  const normKey = s => s.toLowerCase().trim();
+  let existingIdx = -1;
+  if (jikan?.malId) {
+    existingIdx = entries.findIndex(e => e.malId === jikan.malId && (e.season||'1') === seasonKey);
+  }
+  if (existingIdx === -1) {
+    existingIdx = entries.findIndex(e => (e.season||'1') === seasonKey && normKey(e.title) === normKey(jikan?.title || title));
+  }
+
   const finalTotal=totalEpisodes||(jikan?.totalEps?String(jikan.totalEps):'');
   const isComplete=finalTotal&&parseInt(episode)>=parseInt(finalTotal);
   const epNum=parseInt(episode)||0;
@@ -1448,8 +1467,12 @@ async function saveOrUpdateEntry({title,episode,url,status,notes,epNotes,tags,to
     await saveEntries(entries);
     await malSyncEntry(entries[existingIdx]);
     if (isComplete&&!wasComplete) {
+      // Find the representative group by the SPECIFIC entry id we just
+      // updated, not by re-deriving a title key — avoids picking a
+      // different duplicate entry for the completion modal.
+      const savedId = entries[existingIdx].id;
       const groups=groupByAnime(entries);
-      const ag=groups.find(g=>g.title.toLowerCase().trim()===key);
+      const ag=groups.find(g=>g.id===savedId);
       if (ag) setTimeout(()=>showCompletionModal(ag),600);
     }
     return {updated:true};
@@ -2035,12 +2058,38 @@ async function renderSiteTime() {
       }catch(_){}
 
       const parsed=parseAnimeUrl(pageUrl,pageTitle);
+      let hostname = '';
+      try { hostname = new URL(pageUrl).hostname; } catch(_) {}
+      const whitelist = (await chrome.storage.local.get(WHITELIST_KEY))[WHITELIST_KEY] || [];
+      const isSiteWhitelisted = hostname && whitelist.some(d => hostname === d || hostname.endsWith('.'+d));
+      // The #1 cause of "auto-detect isn't working" is simply that the
+      // site was never added to the whitelist — auto-detect (background.js)
+      // silently does nothing on non-whitelisted hostnames, with zero
+      // feedback anywhere in the UI. Manual "Save This Episode" always
+      // works regardless (that's what just ran), but surface the gap
+      // clearly here so future visits to this same site actually
+      // auto-track instead of requiring a manual save every time.
+      const whitelistBanner = (hostname && !isSiteWhitelisted) ? `
+        <div style="margin-top:10px;padding:8px 10px;border:1px solid rgba(251,191,36,0.35);background:rgba(251,191,36,0.08);border-radius:8px;font-size:11px;color:var(--amber);display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <span>⚠ ${escapeHtml(hostname)} isn't whitelisted — future episodes here won't auto-save.</span>
+          <button id="btn-quick-whitelist" data-host="${escapeHtml(hostname)}" style="background:var(--amber);border:none;border-radius:4px;color:#000;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">Add site</button>
+        </div>` : '';
       document.getElementById('tab-preview').classList.remove('hidden');
       document.getElementById('tab-preview').innerHTML=`
         <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px">Detected:</div>
         <div style="font-weight:700">${escapeHtml(parsed.title)}</div>
         <div style="color:var(--text-secondary);font-size:11px;margin-top:3px">Episode ${escapeHtml(String(parsed.episode))}</div>
-        <div style="color:var(--accent);font-size:10px;font-family:monospace;margin-top:3px">${escapeHtml(truncateUrl(pageUrl))}</div>`;
+        <div style="color:var(--accent);font-size:10px;font-family:monospace;margin-top:3px">${escapeHtml(truncateUrl(pageUrl))}</div>
+        ${whitelistBanner}`;
+      document.getElementById('btn-quick-whitelist')?.addEventListener('click', async (ev) => {
+        const host = ev.currentTarget.dataset.host;
+        const list = (await chrome.storage.local.get(WHITELIST_KEY))[WHITELIST_KEY] || [];
+        if (!list.includes(host)) list.push(host);
+        await chrome.storage.local.set({ [WHITELIST_KEY]: list });
+        renderWhitelist();
+        showToast(`${host} added — auto-detect active on next visit ✓`,'success');
+        ev.currentTarget.closest('div').remove();
+      });
 
       const result=await saveOrUpdateEntry({title:parsed.title,episode:parsed.episode,url:pageUrl,status:'watching',notes:'',epNotes:'',tags:[],totalEpisodes:'',priority:'normal',type:'sub',season:''});
       await autoBackup();
