@@ -14,7 +14,7 @@ auto-detected from whitelisted streaming/reader sites, or added manually.
 
 The repository source files are the implementation source of truth. AI agents should inspect the actual code before assuming a feature exists or changing behavior.
 
-## What it does today (v12.0.0)
+## What it does today (v12.1.0)
 
 ### Auto-detection
 - Reads a whitelisted site's page title / og:title / h1, or (highest
@@ -106,13 +106,15 @@ The repository source files are the implementation source of truth. AI agents sh
   degrades gracefully to a transparent layer without it.
 - Rewatch/episode-tracker features are anime-only; manga has no
   equivalent reread tracking yet.
-- `saveOrUpdateEntry`'s initial lookup (deciding whether a manual/auto save
-  is a new anime or an update to an existing one) still keys off title
-  text rather than entry id. Everything downstream of that lookup (pin,
-  rating, completion, delete, MAL link) was fixed to operate on entry id
-  in v12.0.0, but the lookup itself is a deliberately deferred, separate
-  fix — see PROGRESS.md.
+- Manual save/update ("Save This Episode", manual URL entry) now resolves
+  identity via MAL ID + season (matching the auto-detect path) instead of
+  title text alone, closing the last deferred identity gap from v12.0.0
+  — see PROGRESS.md's v12.1.0 entry.
 - Auto-linking to MAL now requires either a near-exact match or a clear
   confidence margin over the runner-up candidate (see PROGRESS.md v12
   entry) — ambiguous titles are left unlinked rather than guessed, so some
   previously auto-linked entries may now need a manual 🔗 link.
+- The "Save This Episode" preview now shows a warning banner with a
+  one-click fix if the current site isn't whitelisted for auto-detect —
+  auto-detect silently does nothing on non-whitelisted hostnames, which
+  was previously invisible in the UI.
