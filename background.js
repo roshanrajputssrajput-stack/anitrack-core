@@ -1,6 +1,6 @@
-// background.js — AniTrack v12
+// background.js — AniTrack v12.1
 
-// ─── STORAGE WRITE LOCK ─────────────────────────────────────────
+// ─── STORAGE WRITE LOCK ─────────────────────────────────────────────────────────────────────────────────
 // Multiple independent code paths (VIDEO_PROGRESS, EPISODE_COMPLETE, the
 // checkpoint alarm's flushActiveSession, autoDetectFromTab) each do their
 // own chrome.storage.local.get → mutate in memory → set. Those are three
@@ -23,7 +23,7 @@ const MAL_AUTH_URL = 'https://myanimelist.net/v1/oauth2/authorize';
 const MAL_TOKEN_URL = 'https://myanimelist.net/v1/oauth2/token';
 const WHITELIST_KEY = 'anitrack_whitelist'; // string[] of hostnames user added
 
-// ─── AUTO-DETECT ON WHITELISTED SITES ─────────────────────────
+// ─── AUTO-DETECT ON WHITELISTED SITES ───────────────────────────────
 // Generic by design: no per-site selectors. Just reads document.title /
 // og:title / h1 (via content.js, already injected on <all_urls>) and
 // pulls an episode number out with generic regex patterns that work the
@@ -517,7 +517,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
-// ─── PER-SITE + PER-ANIME TIME TRACKING ─────────────────────────
+// ─── PER-SITE + PER-ANIME TIME TRACKING ───────────────────
 // Two independent layers, not one:
 // LAYER A (primary) — real <video> playback progress from content.js.
 // This is ground truth: if currentTime actually advanced, you actually
@@ -539,7 +539,7 @@ let lastVideoTimeByUrl = {}; // url -> last reported currentTime, for delta calc
 
 function todayKey() { return new Date().toISOString().slice(0,10); }
 
-// ─── REWATCH DETECTION ───────────────────────────────────────────
+// ─── REWATCH DETECTION ─────────────────────────────────────────────────────────────────────────────
 // Single source of truth for "have I watched this specific episode before,
 // and how many times". Called from EPISODE_COMPLETE (real playback, Layer
 // A) here in background.js, and from an identical copy in popup.js on the
@@ -996,7 +996,7 @@ async function refreshMalToken() {
   }
 }
 
-// ─── MESSAGE ROUTER ───────────────────────────────────────────
+// ─── MESSAGE ROUTER ─────────────────────────────────────────
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'GET_TAB_INFO') {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -1034,7 +1034,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// ─── NEW SEASON WATCHER ───────────────────────────────────────
+// ─── NEW SEASON WATCHER ─────────────────────────────────────────
 // Once a day, checks anime marked "completed" for a newly released sequel
 // season, and fires a Chrome notification if one is found and hasn't been
 // flagged before. Runs on an alarm (not on every popup open) to stay cheap.
@@ -1143,7 +1143,7 @@ chrome.notifications.onClicked.addListener((notifId) => {
   }
 });
 
-// ─── NEXT EPISODE NOTIFIER ─────────────────────────────────────
+// ─── NEXT EPISODE NOTIFIER ─────────────────────────────────────────
 // The on-card countdown only shows when you actually open the popup, so it's
 // useless as an alert. This runs every 30 min and pushes a real Chrome
 // notification the first time it sees, for a "watching" anime, that today is
