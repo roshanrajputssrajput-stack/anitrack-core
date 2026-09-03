@@ -1,4 +1,4 @@
-// content.js — AniTrack v12
+// content.js — AniTrack v12.1
 (function () {
   // ─── RESUME: apply a pending saved position exactly once per page load ──
   // popup.js writes ANITRACK_PENDING_RESUME_KEY to chrome.storage.local right
