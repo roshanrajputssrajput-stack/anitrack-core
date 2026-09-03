@@ -97,7 +97,51 @@ new one", and reworking it touches the core save flow broadly enough that
 it's being held for a dedicated session rather than folded into this
 already-large fix pass.
 
+### 2026-09-02 (later same day) — v12.0.0 → v12.1.0: repo verification + closed remaining identity gap
+User reported a runtime `RangeError` at `content.js:256` referencing a
+function `updateTrackingState` — cloned the actual GitHub repo
+(`roshanrajputssrajput-stack/anitrack-core`) and confirmed via `diff` that
+its `content.js`/`background.js`/`popup.js`/`manifest.json` are byte-for-byte
+identical to the v12.0.0 files from the session above, and confirmed via
+`grep` that `updateTrackingState` does not exist anywhere in the repo
+(including a `src/` scaffold mentioned in SOURCE_MAP.md but not actually
+present). The crash is not from this codebase — most likely a stale content
+script in a tab left open across an extension reload, or Chrome pointed at a
+different local folder than this repo. Reported to the user directly rather
+than guessed away. Full detail in CHANGELOG_AI.md's 2026-09-02 entry.
+
+Also closed the one identity gap explicitly deferred in the entry above:
+`saveOrUpdateEntry` (popup.js, manual save path) now resolves malId+season
+identity before falling back to title text, matching the pattern already
+used in background.js's auto-detect path. Added a whitelist-status banner
+to the manual-save preview, since silently not-whitelisted is the most
+likely real cause of "auto-detect isn't working" reports and there was
+previously zero UI feedback about it anywhere.
+
+Version bumped to 12.1.0 across all files. See CHANGELOG_AI.md for full
+before/after detail per this repo's AGENTS.md change-reporting rules.
+
+### 2026-09-03 — GitHub sync cleanup
+User now maintains the repo directly (drag-and-drop uploads via GitHub web
+UI) instead of receiving files in chat. A round of manual uploads created
+two duplicate files (`PROGRESS (1).md`, `README (1).md`) because the
+downloaded filenames already existed locally on the user's machine, so
+GitHub's uploader created new files instead of overwriting. Verified by
+cloning the repo and diffing: `popup.js`, `popup.html`, and `CHANGELOG_AI.md`
+uploaded correctly and match the v12.1.0 source exactly (byte-for-byte,
+confirmed via `diff`, plus `node -c` syntax pass). `PROGRESS.md` and
+`README.md` were stale (still v12.0.0 content) — corrected in place here.
+The two `(1)` duplicate files need manual deletion (no delete action
+available via the current GitHub connection) — flagged to the user directly.
+
 ## Next
+- User needs to confirm what `chrome://extensions` actually shows as the
+  unpacked extension's source folder, and hard-refresh any anime tabs that
+  were open before the last extension reload, to rule out stale content
+  scripts before further blind debugging of "auto-detect not working" /
+  "false attachment."
+- Delete `PROGRESS (1).md` and `README (1).md` from the repo (manual, via
+  GitHub web UI — no delete action available through the current connector).
 - Full UI redesign per Roshan's Visily mockup (screen-navigation flow:
   Continue Watching list → Add New → Details, replacing the current
   tab-based single-page popup). This is an architecture change, not a
